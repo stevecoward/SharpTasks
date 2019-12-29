@@ -86,12 +86,12 @@ namespace SharpTasks.Execution
 
         public static string FilterTasksByName(List<ScheduledTaskResult> Tasks, string Name)
         {
-            if (!string.IsNullOrEmpty(Name.Trim()))
-            {
-                ScheduledTaskResult foundTask = Tasks.Where(task => task.Name.Contains(Name)).FirstOrDefault();
-                if (foundTask != null)
-                    return GetResultsReport(foundTask);
-            }
+            ScheduledTaskResult foundTask = Tasks.Where(task => task.Name.Contains(Name)).FirstOrDefault();
+            if (foundTask == null && !Name.Equals("*"))
+                return String.Format("Unable to locate any scheduled tasks matching name: {0}", Name);
+
+            if (foundTask != null)
+                return GetResultsReport(foundTask);
 
             return GetResultsReport(Tasks);
         }
