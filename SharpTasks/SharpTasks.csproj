@@ -44,6 +44,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Execution\ScheduledTask.cs" />
+    <Compile Include="Generic\Processes.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Reconnaissance\IPAddress.cs" />
   </ItemGroup>
