@@ -117,7 +117,7 @@ namespace SharpTasks.Execution
         /// <returns>Outcome of task creation.</returns>
         public static string CreateScheduledTask(string Schedule, string Modifier, string Name, string Run)
         {
-            var property = ScheduleOptions.Find(prop => prop.Name.ToLower().Equals(Schedule.ToLower()));
+            var property = ScheduleOptions.Find(Prop => Prop.Name.ToLower().Equals(Schedule.ToLower()));
             if (property == null)
                 return $"Invalid value for 'Schedule': {Schedule}";
 
@@ -144,9 +144,20 @@ namespace SharpTasks.Execution
         /// </summary>
         public sealed class ScheduleOptionProperties
         {
+            /// <summary>
+            ///     Name of the Scheduled Task option.
+            /// </summary>
             public string Name { get; set; } = "";
+
+            /// <summary>
+            ///     Maximum value of the modifier for the Scheduled Task option.
+            /// </summary>
             public int MaximumValue { get; set; }
 
+            /// <summary>
+            ///     Override method to return string representation of a <c>ScheduleOptionProperties</c> object.
+            /// </summary>
+            /// <returns>String representation of <c>ScheduleOptionProperties</c> object</returns>
             public override string ToString()
             {
                 return $"Option: Name={Name} | MaximumValue={MaximumValue}";
@@ -160,10 +171,25 @@ namespace SharpTasks.Execution
         {
             private string _formattedName;
 
+            /// <summary>
+            ///     Name of the scheduled task.
+            /// </summary>
             public string Name { get; set; } = "";
+
+            /// <summary>
+            ///     Current status of the scheduled task.
+            /// </summary>
             public string Status { get; set; } = "";
+
+            /// <summary>
+            ///     Date and time the scheduled task is due to run next.
+            /// </summary>
             public string NextRun { get; set; } = "";
 
+            /// <summary>
+            ///     Override method to return string representation of a <c>ScheduledTaskResult</c> object.
+            /// </summary>
+            /// <returns>String representation of a <c>ScheduledTaskResult</c> object.</returns>
             public override string ToString()
             {
                 _formattedName = Name.Length > 97 ? Name.Substring(0, 97) + "..." : Name;
