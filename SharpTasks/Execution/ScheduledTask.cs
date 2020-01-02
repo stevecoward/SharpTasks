@@ -34,7 +34,7 @@ namespace SharpTasks.Execution
         /// </summary>
         /// <param name="Folder">Scheduled task folder name. Defaults to "\" if value is empty/null.</param>
         /// <returns>A list of all scheduled tasks found in <c>Folder</c>.</returns>
-        public static List<ScheduledTaskResult> GetScheduledTasks(string Folder)
+        public static List<ScheduledTaskResult> Get(string Folder)
         {
             var tasks = new List<ScheduledTaskResult>();
 
@@ -59,6 +59,38 @@ namespace SharpTasks.Execution
             }
 
             return tasks;
+        }
+
+        /// <summary>
+        ///     Creates a new scheduled task
+        /// </summary>
+        /// <param name="Schedule">Time frame in which a task is to be run.</param>
+        /// <param name="Modifier">Integer value to modify the Scheduled.</param>
+        /// <param name="Name">Name for the scheduled task.</param>
+        /// <param name="Run">Executable path and parameters to run with scheduled task.</param>
+        /// <returns>Outcome of task creation.</returns>
+        public static string Create(string Schedule, string Modifier, string Name, string Run)
+        {
+            var property = ScheduleOptions.Find(Prop => Prop.Name.ToLower().Equals(Schedule.ToLower()));
+            if (property == null)
+                return $"Invalid value for 'Schedule': {Schedule}";
+
+            if (int.Parse(Modifier) > property.MaximumValue)
+                return "Modifier for task exceeds maximum value. " + property;
+
+            var taskNameParts = Name.Split('\\');
+            var taskFolderParts = new string[taskNameParts.Length - 1];
+            var taskName = taskNameParts[taskNameParts.Length - 1];
+
+            for (var i = 0; i < taskNameParts.Length - 1; i++)
+                taskFolderParts[i] = taskNameParts[i];
+
+            var tasks = Get(string.Join("\\", taskFolderParts));
+            if (tasks == null || !FilterByName(tasks, taskName).Contains("Unable to locate"))
+                return "Failed to create task. Task probably exists already.";
+            var output = Processes.CreateProcess("schtasks.exe",
+                $"/create /sc {property.Name} /mo {Modifier} /tn \"{string.Join("\\", taskFolderParts) + "\\" + taskName}\" /tr \"{Run}\"");
+            return output.Contains("SUCCESS") ? output : "Failed to create scheduled task";
         }
 
         /// <summary>
@@ -98,45 +130,13 @@ namespace SharpTasks.Execution
         /// <param name="Name">The name of the scheduled task to search for.</param>
         /// <returns>Returns either a found scheduled task or the entire list of scheduled tasks.</returns>
         /// <todo>Change the behavior of outcome. Don't return a report of all tasks if the filtered result is blank.</todo>
-        public static string FilterTasksByName(List<ScheduledTaskResult> Tasks, string Name)
+        public static string FilterByName(List<ScheduledTaskResult> Tasks, string Name)
         {
             var foundTask = Tasks.FirstOrDefault(Task => Task.Name.Contains(Name));
             if (foundTask == null && !Name.Equals("*"))
                 return $"Unable to locate any scheduled tasks matching name: {Name}";
 
             return foundTask != null ? GetResultsReport(foundTask) : GetResultsReport(Tasks);
-        }
-
-        /// <summary>
-        ///     Creates a new scheduled task
-        /// </summary>
-        /// <param name="Schedule">Time frame in which a task is to be run.</param>
-        /// <param name="Modifier">Integer value to modify the Scheduled.</param>
-        /// <param name="Name">Name for the scheduled task.</param>
-        /// <param name="Run">Executable path and parameters to run with scheduled task.</param>
-        /// <returns>Outcome of task creation.</returns>
-        public static string CreateScheduledTask(string Schedule, string Modifier, string Name, string Run)
-        {
-            var property = ScheduleOptions.Find(Prop => Prop.Name.ToLower().Equals(Schedule.ToLower()));
-            if (property == null)
-                return $"Invalid value for 'Schedule': {Schedule}";
-
-            if (int.Parse(Modifier) > property.MaximumValue)
-                return "Modifier for task exceeds maximum value. " + property;
-
-            var taskNameParts = Name.Split('\\');
-            var taskFolderParts = new string[taskNameParts.Length - 1];
-            var taskName = taskNameParts[taskNameParts.Length - 1];
-
-            for (var i = 0; i < taskNameParts.Length - 1; i++)
-                taskFolderParts[i] = taskNameParts[i];
-
-            var tasks = GetScheduledTasks(string.Join("\\", taskFolderParts));
-            if (tasks == null || !FilterTasksByName(tasks, taskName).Contains("Unable to locate"))
-                return "Failed to create task. Task probably exists already.";
-            var output = Processes.CreateProcess("schtasks.exe",
-                $"/create /sc {property.Name} /mo {Modifier} /tn \"{string.Join("\\", taskFolderParts) + "\\" + taskName}\" /tr \"{Run}\"");
-            return output.Contains("SUCCESS") ? output : "Failed to create scheduled task";
         }
 
         /// <summary>
