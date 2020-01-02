@@ -36,24 +36,28 @@ namespace SharpTasks.Evasion
             if (!Enum.IsDefined(typeof(EditableTimestampFields), timestampSelection))
                 return $"Timestamp field to edit is invalid. Choices are: [{string.Join(", ", timestampFieldOptions)}]";
 
-            switch (Enum.Parse(typeof(EditableTimestampFields), timestampSelection))
+            try
             {
-                case EditableTimestampFields.Accessed:
-                    File.SetLastAccessTime(FileName, timestamp);
-                    break;
-                case EditableTimestampFields.Created:
-                    File.SetCreationTime(FileName, timestamp);
-                    break;
-                case EditableTimestampFields.Modified:
-                case EditableTimestampFields.Changed:
-                    File.SetLastWriteTime(FileName, timestamp);
-                    break;
-                case EditableTimestampFields.All:
-                    File.SetLastAccessTime(FileName, timestamp);
-                    File.SetCreationTime(FileName, timestamp);
-                    File.SetLastWriteTime(FileName, timestamp);
-                    break;
+                switch (Enum.Parse(typeof(EditableTimestampFields), timestampSelection))
+                {
+                    case EditableTimestampFields.Accessed:
+                        File.SetLastAccessTime(FileName, timestamp);
+                        break;
+                    case EditableTimestampFields.Created:
+                        File.SetCreationTime(FileName, timestamp);
+                        break;
+                    case EditableTimestampFields.Modified:
+                    case EditableTimestampFields.Changed:
+                        File.SetLastWriteTime(FileName, timestamp);
+                        break;
+                    case EditableTimestampFields.All:
+                        File.SetLastAccessTime(FileName, timestamp);
+                        File.SetCreationTime(FileName, timestamp);
+                        File.SetLastWriteTime(FileName, timestamp);
+                        break;
+                }
             }
+            catch (Exception e) { return $"Error: Unable to set file's time properties.{Environment.NewLine}{e.GetType().FullName}: {e.Message + Environment.NewLine + e.StackTrace}"; }
 
             return output;
         }
