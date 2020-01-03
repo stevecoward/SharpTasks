@@ -51,14 +51,13 @@ namespace SharpTasks.Execution
         /// <param name="Name">Full path and name of scheduled task.</param>
         /// <param name="Force">Toggles the forceful deletion of scheduled task.</param>
         /// <returns>String output with outcome of command output.</returns>
-        public static string Delete(string Name, string Force)
+        public static string Delete(string Name)
         {
             var explodedPath = ExplodePath(Name);
             if (!Exists(explodedPath.Folder, explodedPath.Name))
                 return $"Unable to edit task: {explodedPath.Name}. Task does not exist at path: {explodedPath.Folder}";
 
-            var forceDelete = (Force.ToLower() == "true") ? "/f" : "";
-            var output = Processes.CreateProcess("schtasks.exe", $"/delete /tn \"{Name}\" {forceDelete}");
+            var output = Processes.CreateProcess("schtasks.exe", $"/delete /tn \"{Name}\" /f");
 
             return output;
         }
