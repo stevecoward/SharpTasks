@@ -30,6 +30,65 @@ namespace SharpTasks.Execution
         };
 
         /// <summary>
+        ///     Runs a given scheduled task.
+        /// </summary>
+        /// <param name="Name">Full path and name of scheduled task.</param>
+        /// <returns>String output with outcome of running scheduled task.</returns>
+        public static string Run(string Name)
+        {
+            var explodedPath = ExplodePath(Name);
+            if (!Exists(explodedPath.Folder, explodedPath.Name))
+                return $"Unable to edit task: {explodedPath.Name}. Task does not exist at path: {explodedPath.Folder}";
+
+            var output = Processes.CreateProcess("schtasks.exe", $"/run /tn \"{Name}\"");
+
+            return output;
+        }
+
+        /// <summary>
+        ///     Deletes a given scheduled task.
+        /// </summary>
+        /// <param name="Name">Full path and name of scheduled task.</param>
+        /// <param name="Force">Toggles the forceful deletion of scheduled task.</param>
+        /// <returns>String output with outcome of command output.</returns>
+        public static string Delete(string Name, string Force)
+        {
+            var explodedPath = ExplodePath(Name);
+            if (!Exists(explodedPath.Folder, explodedPath.Name))
+                return $"Unable to edit task: {explodedPath.Name}. Task does not exist at path: {explodedPath.Folder}";
+
+            var forceDelete = (Force.ToLower() == "true") ? "/f" : "";
+            var output = Processes.CreateProcess("schtasks.exe", $"/delete /tn \"{Name}\" {forceDelete}");
+
+            return output;
+        }
+
+        /// <summary>
+        ///     Changes certain properties of a scheduled task.
+        /// </summary>
+        /// <param name="Name">Folder and name of scheduled task.</param>
+        /// <param name="Toggle">Must be either 'Enable' or 'Disable'.</param>
+        /// <param name="Run">Executable path and parameters to run with scheduled task.</param>
+        /// <param name="RunAsUser">User to make changes to scheduled task as.</param>
+        /// <param name="RunAsPassword">Password for RunAsUser value.</param>
+        /// <returns>Various strings indicating outcome of change operation.</returns>
+        public static string Edit(string Name, string Toggle, string Run, string RunAsUser, string RunAsPassword)
+        {
+            var explodedPath = ExplodePath(Name);
+            if (!Exists(explodedPath.Folder, explodedPath.Name))
+                return $"Unable to edit task: {explodedPath.Name}. Task does not exist at path: {explodedPath.Folder}";
+
+            if (!(Toggle.ToLower() == "enable" || Toggle.ToLower() == "disable"))
+                return "Invalid toggle option chosen. Acceptable values are 'Enable' or 'Disable'";
+
+            var toggleChoice = (Toggle.ToLower() == "enable") ? "/enable" : "/disable";
+            var output = Processes.CreateProcess("schtasks.exe",
+                $"/change /tn \"{Name}\" /tr \"{Run}\" {toggleChoice} /ru {RunAsUser} /rp {RunAsPassword}");
+
+            return output;
+        }
+
+        /// <summary>
         ///     Get all scheduled tasks inside a given <c>Folder</c>.
         /// </summary>
         /// <param name="Folder">Scheduled task folder name. Defaults to "\" if value is empty/null.</param>
@@ -78,19 +137,57 @@ namespace SharpTasks.Execution
             if (int.Parse(Modifier) > property.MaximumValue)
                 return "Modifier for task exceeds maximum value. " + property;
 
-            var taskNameParts = Name.Split('\\');
-            var taskFolderParts = new string[taskNameParts.Length - 1];
-            var taskName = taskNameParts[taskNameParts.Length - 1];
+            var explodedPath = ExplodePath(Name);
 
-            for (var i = 0; i < taskNameParts.Length - 1; i++)
-                taskFolderParts[i] = taskNameParts[i];
-
-            var tasks = Get(string.Join("\\", taskFolderParts));
-            if (tasks == null || !FilterByName(tasks, taskName).Contains("Unable to locate"))
+            var tasks = Get(explodedPath.Folder);
+            if (tasks == null || !FilterByName(tasks, explodedPath.Name).Contains("Unable to locate"))
                 return "Failed to create task. Task probably exists already.";
+
+            if (Exists(explodedPath.Folder, explodedPath.Name))
+                return "Failed to create task. Task probably exists already.";
+
             var output = Processes.CreateProcess("schtasks.exe",
-                $"/create /sc {property.Name} /mo {Modifier} /tn \"{string.Join("\\", taskFolderParts) + "\\" + taskName}\" /tr \"{Run}\"");
+                $"/create /sc {property.Name} /mo {Modifier} /tn \"{explodedPath.Folder + "\\" + explodedPath.Name}\" /tr \"{Run}\"");
             return output.Contains("SUCCESS") ? output : "Failed to create scheduled task";
+        }
+
+        /// <summary>
+        ///     Checks if a scheduled task folder exists.
+        /// </summary>
+        /// <param name="Path">Full path of scheduled task folder</param>
+        /// <returns><c>true</c> or <c>false</c> if path exists.</returns>
+        private static bool Exists(string Path)
+        {
+            return Get(Path).Count > 0;
+        }
+
+        /// <summary>
+        ///     Checks if a scheduled task exists in a folder.
+        /// </summary>
+        /// <param name="Path">Full path of scheduled task folder</param>
+        /// <param name="Name">Name of scheduled task</param>
+        /// <returns><c>true</c> or <c>false</c> if path and task exist.</returns>
+        private static bool Exists(string Path, string Name)
+        {
+            var tasks = Get(Path);
+            return (tasks.Count > 0 && !FilterByName(tasks, Name).Contains("Unable to locate"));
+        }
+
+        /// <summary>
+        ///     Helper method to separate a task name from its folder path.
+        /// </summary>
+        /// <param name="FullPath">Absolute path to scheduled task including task name.</param>
+        /// <returns>Object consisting of scheduled task folder and name.</returns>
+        private static ExplodedPath ExplodePath(string FullPath)
+        {
+            var pathParts = FullPath.Split('\\');
+            var taskFolderParts = new string[pathParts.Length - 1];
+            var taskName = pathParts[pathParts.Length - 1];
+
+            for (var i = 0; i < pathParts.Length - 1; i++)
+                taskFolderParts[i] = pathParts[i];
+
+            return new ExplodedPath { Folder = string.Join("\\", taskFolderParts), Name = taskName };
         }
 
         /// <summary>
@@ -195,6 +292,13 @@ namespace SharpTasks.Execution
                 _formattedName = Name.Length > 97 ? Name.Substring(0, 97) + "..." : Name;
                 return string.Format(StringFormat, _formattedName, Status, NextRun);
             }
+        }
+
+        private sealed class ExplodedPath
+        {
+            public string Folder { get; set; } = "";
+            
+            public string Name { get; set; } = "";
         }
     }
 }
